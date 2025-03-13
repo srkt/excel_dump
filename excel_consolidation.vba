@@ -56,6 +56,7 @@ Sub FetchDataFromSource(sourcePath As String)
     Dim cellValue As Variant
     Dim useAutoDetect As Boolean
     Dim manualHeaderRow As Long
+    Dim currentHeader As Variant
     
     ' Set target workbook to the active workbook
     Set targetWB = ThisWorkbook
@@ -126,14 +127,15 @@ Sub FetchDataFromSource(sourcePath As String)
             
             ' Add each header to the collection if it's not already there
             For j = 1 To lastCol
-                On Error Resume Next
                 headerTitle = Trim(sourceWS.Cells(dataStartRow, j).Value)
                 
                 ' Only add non-empty headers
                 If headerTitle <> "" Then
+                    ' Check if this header is already in our collection
+                    On Error Resume Next
                     allColumnHeaders.Add headerTitle, CStr(headerTitle)
+                    On Error GoTo 0
                 End If
-                On Error GoTo 0
             Next j
         End If
     Next i
@@ -156,11 +158,11 @@ Sub FetchDataFromSource(sourcePath As String)
     targetRow = targetRow + 1
     
     ' Write all the unique headers to the first row of the target worksheet
-    colIndex = 1
-    For Each headerTitle In allColumnHeaders
-        targetWS.Cells(targetRow, colIndex) = headerTitle
+    colIndex = 2  ' Start at 2 because column 1 is for Source Tab
+    For Each currentHeader In allColumnHeaders
+        targetWS.Cells(targetRow, colIndex) = currentHeader
         colIndex = colIndex + 1
-    Next headerTitle
+    Next currentHeader
     
     ' Format the header row
     With targetWS.Rows(targetRow)
@@ -189,27 +191,23 @@ Sub FetchDataFromSource(sourcePath As String)
             lastRow = GetLastRow(sourceWS, dataStartRow)
             lastCol = GetLastColumn(sourceWS, dataStartRow)
             
-            ' Create a mapping between source columns and target columns based on headers
-            Set headerMapping = CreateHeaderMapping(sourceWS, dataStartRow, lastCol, allColumnHeaders)
-            
-            ' Copy data rows according to the header mapping
+            ' Copy data rows
             For j = dataStartRow + 1 To lastRow
                 ' Add the sheet name as a source identifier
                 targetWS.Cells(targetRow, 1) = sourceWS.Name
                 
                 ' Copy each cell to the appropriate column in the target worksheet
                 For k = 1 To lastCol
-                    ' Get the corresponding target column
                     headerTitle = Trim(sourceWS.Cells(dataStartRow, k).Value)
                     
                     If headerTitle <> "" Then
                         ' Get the value from the source cell
                         cellValue = sourceWS.Cells(j, k).Value
                         
-                        ' Look up the target column using our mapping
-                        If Not IsEmpty(headerMapping(headerTitle)) Then
-                            colIndex = headerMapping(headerTitle)
-                            
+                        ' Find the corresponding column in the target worksheet
+                        colIndex = FindColumnIndex(targetWS, headerTitle, 2)
+                        
+                        If colIndex > 0 Then
                             ' Set the value in the target worksheet
                             targetWS.Cells(targetRow, colIndex) = cellValue
                             
@@ -245,35 +243,20 @@ Sub FetchDataFromSource(sourcePath As String)
            "Columns with matching headers were consolidated across all tabs.", vbInformation
 End Sub
 
-' Function to create a mapping between source headers and target columns
-Function CreateHeaderMapping(ws As Worksheet, headerRow As Long, lastCol As Long, allHeaders As Collection) As Object
-    Dim mapping As Object
+' Function to find the column index with a specific header
+Function FindColumnIndex(ws As Worksheet, headerToFind As String, headerRow As Long) As Long
+    Dim lastCol As Long
     Dim i As Long
-    Dim header As Variant
-    Dim targetCol As Long
     
-    ' Create a Dictionary to store the mapping
-    Set mapping = CreateObject("Scripting.Dictionary")
+    lastCol = ws.Cells(headerRow, ws.Columns.Count).End(xlToLeft).Column
+    FindColumnIndex = 0  ' Default to not found
     
-    ' For each column in the source worksheet
     For i = 1 To lastCol
-        header = Trim(ws.Cells(headerRow, i).Value)
-        
-        ' Skip empty headers
-        If header <> "" Then
-            ' Find the corresponding column in the target worksheet
-            targetCol = 1
-            For Each Variant In allHeaders
-                If Variant = header Then
-                    mapping.Add header, targetCol + 1  ' +1 because we have Source Tab column
-                    Exit For
-                End If
-                targetCol = targetCol + 1
-            Next Variant
+        If Trim(ws.Cells(headerRow, i).Value) = headerToFind Then
+            FindColumnIndex = i
+            Exit Function
         End If
     Next i
-    
-    Set CreateHeaderMapping = mapping
 End Function
 
 ' Function to find the header row dynamically
