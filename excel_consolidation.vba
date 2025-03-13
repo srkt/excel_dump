@@ -54,6 +54,8 @@ Sub FetchDataFromSource(sourcePath As String)
     Dim headerTitle As Variant
     Dim colIndex As Long
     Dim cellValue As Variant
+    Dim useAutoDetect As Boolean
+    Dim manualHeaderRow As Long
     
     ' Set target workbook to the active workbook
     Set targetWB = ThisWorkbook
@@ -81,6 +83,26 @@ Sub FetchDataFromSource(sourcePath As String)
         Exit Sub
     End If
     
+    ' Ask if user wants to manually specify header row
+    Dim headerChoice As VbMsgBoxResult
+    headerChoice = MsgBox("Do you want to manually specify the header row index?" & vbCrLf & _
+                         "Click Yes to specify a row number, or No to use automatic detection.", _
+                         vbQuestion + vbYesNo, "Header Row Selection")
+    
+    useAutoDetect = (headerChoice = vbNo)
+    
+    If Not useAutoDetect Then
+        ' Ask for header row index
+        On Error Resume Next
+        manualHeaderRow = CInt(InputBox("Enter the row number that contains headers (e.g., 3):", "Header Row Index", "3"))
+        On Error GoTo 0
+        
+        If manualHeaderRow <= 0 Then
+            MsgBox "Invalid row number. Using automatic detection instead.", vbExclamation
+            useAutoDetect = True
+        End If
+    End If
+    
     ' Create a collection to store all unique column headers
     Set allColumnHeaders = New Collection
     
@@ -89,7 +111,11 @@ Sub FetchDataFromSource(sourcePath As String)
         Set sourceWS = sourceWB.Worksheets(i)
         
         ' Find the actual header row
-        dataStartRow = FindHeaderRow(sourceWS)
+        If useAutoDetect Then
+            dataStartRow = FindHeaderRow(sourceWS)
+        Else
+            dataStartRow = manualHeaderRow
+        End If
         
         ' Check if the worksheet has data
         hasData = CheckWorksheetHasData(sourceWS, dataStartRow)
@@ -149,7 +175,11 @@ Sub FetchDataFromSource(sourcePath As String)
         Set sourceWS = sourceWB.Worksheets(i)
         
         ' Find the actual header row
-        dataStartRow = FindHeaderRow(sourceWS)
+        If useAutoDetect Then
+            dataStartRow = FindHeaderRow(sourceWS)
+        Else
+            dataStartRow = manualHeaderRow
+        End If
         
         ' Check if the worksheet has data
         hasData = CheckWorksheetHasData(sourceWS, dataStartRow)
