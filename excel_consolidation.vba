@@ -73,8 +73,8 @@ Sub FetchDataFromSource(sourcePath As String)
     
     ' Ask the user how many tabs to import
     On Error Resume Next
-    tabsToImport = InputBox("How many tabs do you want to import from the source file?" & vbCrLf & _
-                           "(Source file has " & sourceWB.Worksheets.Count & " tabs)", "Select Number of Tabs", sourceWB.Worksheets.Count)
+    tabsToImport = CInt(InputBox("How many tabs do you want to import from the source file?" & vbCrLf & _
+                                 "(Source file has " & sourceWB.Worksheets.Count & " tabs)", "Select Number of Tabs", sourceWB.Worksheets.Count))
     On Error GoTo 0
     
     ' Validate user input
@@ -87,8 +87,8 @@ Sub FetchDataFromSource(sourcePath As String)
     ' Ask if user wants to manually specify header row
     Dim headerChoice As VbMsgBoxResult
     headerChoice = MsgBox("Do you want to manually specify the header row index?" & vbCrLf & _
-                         "Click Yes to specify a row number, or No to use automatic detection.", _
-                         vbQuestion + vbYesNo, "Header Row Selection")
+                          "Click Yes to specify a row number, or No to use automatic detection.", _
+                          vbQuestion + vbYesNo, "Header Row Selection")
     
     useAutoDetect = (headerChoice = vbNo)
     
@@ -127,7 +127,7 @@ Sub FetchDataFromSource(sourcePath As String)
             
             ' Add each header to the collection if it's not already there
             For j = 1 To lastCol
-                headerTitle = Trim(sourceWS.Cells(dataStartRow, j).Value)
+                headerTitle = Trim(CStr(sourceWS.Cells(dataStartRow, j).Value)) ' Explicit conversion to String
                 
                 ' Only add non-empty headers
                 If headerTitle <> "" Then
@@ -198,14 +198,14 @@ Sub FetchDataFromSource(sourcePath As String)
                 
                 ' Copy each cell to the appropriate column in the target worksheet
                 For k = 1 To lastCol
-                    headerTitle = Trim(sourceWS.Cells(dataStartRow, k).Value)
+                    headerTitle = Trim(CStr(sourceWS.Cells(dataStartRow, k).Value)) ' Explicit conversion to String
                     
                     If headerTitle <> "" Then
                         ' Get the value from the source cell
                         cellValue = sourceWS.Cells(j, k).Value
                         
                         ' Find the corresponding column in the target worksheet
-                        colIndex = FindColumnIndex(targetWS, headerTitle, 2)
+                        colIndex = FindColumnIndex(targetWS, CStr(headerTitle), 2) ' Pass as String
                         
                         If colIndex > 0 Then
                             ' Set the value in the target worksheet
@@ -247,12 +247,14 @@ End Sub
 Function FindColumnIndex(ws As Worksheet, headerToFind As String, headerRow As Long) As Long
     Dim lastCol As Long
     Dim i As Long
+    Dim cellValue As String
     
     lastCol = ws.Cells(headerRow, ws.Columns.Count).End(xlToLeft).Column
     FindColumnIndex = 0  ' Default to not found
     
     For i = 1 To lastCol
-        If Trim(ws.Cells(headerRow, i).Value) = headerToFind Then
+        cellValue = Trim(CStr(ws.Cells(headerRow, i).Value)) ' Explicit conversion to String
+        If cellValue = headerToFind Then
             FindColumnIndex = i
             Exit Function
         End If
